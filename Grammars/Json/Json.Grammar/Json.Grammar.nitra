@@ -99,23 +99,23 @@
 
     syntax Value
     {
-      | Identifier
-      | StringLiteral1
-      | StringLiteral2
+      //| Identifier
+      //| StringLiteral1
+      //| StringLiteral2
       | Number
       //| [ExplicitSpaces] Number = Integer Fraction? Exponent? s;
       //| [ExplicitSpaces] NumberNeg = Minus="-" Integer Fraction? Exponent? s;
-      | Object = "{" outline_begin_before inl (Property; "," nl)* nl d outline_end "}";
-      | Array  = "[" outline_begin_before (Value; "," sm)* outline_end "]";
-      | "true"
-      | "false"
-      | "null"
+      //| Object = "{" outline_begin_before inl (Property; "," nl)* nl d outline_end "}";
+      //| Array  = "[" outline_begin_before (Value; "," sm)* outline_end "]";
+      //| "true"
+      //| "false"
+      //| "null"
     }
 
     syntax Key
     {
-      | StringLiteral1
-      | StringLiteral2
+      //| StringLiteral1
+      //| StringLiteral2
       | Identifier
     }
 

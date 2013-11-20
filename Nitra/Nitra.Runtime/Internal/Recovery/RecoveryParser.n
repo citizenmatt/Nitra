@@ -24,6 +24,11 @@ namespace Nitra.Internal
       public SequenceStartPos : int;
       public Sequence         : SequenceInfo;
       public Index            : int;
+      [RecordIgnore]
+      public IsParsed         : bool { get; set; }
+      [RecordIgnore]
+      public IsSpeculative    : bool { get; set; }
+      
 
       | Simple
       | Extension                  { ExtensibleStartPos : int; RuleParser : ExtensibleRuleParser }
@@ -33,9 +38,30 @@ namespace Nitra.Internal
       | ListWithSeparatorSeparator { Counter : int; Subrule : SubruleInfo.ListWithSeparator; NextRecord : ParseRecord; }
 
       public IsComplete : bool        { get { Index >= Sequence.Subrules.Length } }
-      public CurSubrule : SubruleInfo { get { Sequence.Subrules[Index] } }
+      public CurSubrule : SubruleInfo { get { if (Index >= Sequence.Subrules.Length) null else Sequence.Subrules[Index] } }
 
-      public Next() : ParseRecord
+      public SpeculativeNext() : ParseRecord
+      {
+        assert3(!IsComplete);
+        def result =
+          match (this)
+          {
+            | Simple                          => ParseRecord.Simple                    (SequenceStartPos, Sequence, Index + 1)
+            | Extension                  as r => ParseRecord.Extension                 (SequenceStartPos, Sequence, Index + 1, r.ExtensibleStartPos, r.RuleParser)
+            | Option                     as r => ParseRecord.Option                    (SequenceStartPos, Sequence, Index + 1, r.NextRecord)
+            | List                       as r => ParseRecord.List                      (SequenceStartPos, Sequence, Index + 1, r.Counter, r.Subrule, r.NextRecord)
+            | ListWithSeparatorRule      as r => ParseRecord.ListWithSeparatorRule     (SequenceStartPos, Sequence, Index + 1, r.Counter, r.Subrule, r.NextRecord)
+            | ListWithSeparatorSeparator as r => ParseRecord.ListWithSeparatorSeparator(SequenceStartPos, Sequence, Index + 1, r.Counter, r.Subrule, r.NextRecord)
+          };
+          
+        result.IsSpeculative = true;
+#if DEBUG
+        result.ParseResult = this.ParseResult;
+#endif
+        result
+      }
+
+      internal Next() : ParseRecord
       {
         assert3(!IsComplete);
         def result =
@@ -90,12 +116,24 @@ namespace Nitra.Internal
           _ = sb.Append(r);
         }
         
+        when (Index == Sequence.Subrules.Length)
+            _ = sb.Append(" ♦");
+        
+        when (this is Extension as ex)
+        {
+          _ = sb.Append(", ExtensibleStartPos=");
+          _ = sb.Append(ex.ExtensibleStartPos);
+        }
+
         _ = sb.Append(", StartPos=");
+        
         _ = sb.Append(SequenceStartPos);
         _ = sb.Append(")");
 
+        when (IsSpeculative)
+          _ = sb.Append(" !!! ");
+        
 #if DEBUG
-        assert2(this.ParseResult != null);
         when (this.ParseResult != null)
         {
           def text = this.ParseResult.Text;
@@ -271,6 +309,7 @@ namespace Nitra.Internal
             _ = extSet.Sequences.Add(parsedSequence);
           }
         }
+        assert2(prevPos <= nextPos);
         _ = parsedSequence.Records.Add(ParseRecordStart(prevPos, nextPos, record));
       }
       when (newRecord && curPos == nextPos)
@@ -299,14 +338,14 @@ namespace Nitra.Internal
       Parse();
     }
 
-    public Parse() : void
+    public Parse(startPos : int = 0) : void
     {
-      for (mutable textPos = 0; textPos < Records.Length; ++textPos)
+      for (mutable textPos = startPos; textPos < Records.Length; ++textPos)
       {
         def set = Records[textPos];
         when (set == null)
           continue;
-        foreach (record in set)
+        foreach (record when !record.IsParsed in set)
           Stack.Push(record);
         while (Stack.Count > 0)
         {
@@ -314,7 +353,7 @@ namespace Nitra.Internal
           if (record.IsComplete)
             Completion(textPos, record)
           else
-            PredictionOrScanning(textPos, record)
+            PredictionOrScanning(textPos, record, startPos)
         }
       }
     }
@@ -401,7 +440,7 @@ namespace Nitra.Internal
       }
     }
 
-    public PredictionOrScanning(textPos : int, record : ParseRecord) : void
+    public PredictionOrScanning(textPos : int, record : ParseRecord, recoveryStartPos : int) : void
     {
       def text = ParseResult.Text;
       match (record.CurSubrule)
@@ -427,13 +466,17 @@ namespace Nitra.Internal
 
         | SimpleCall        as rule =>
           def endPos = rule.RuleParser.Parse(textPos, text, ParseResult);
-          if (endPos >= 0)
-            AddRecord(textPos, endPos, record.Next());
-          else
+          if (endPos < 0 || textPos == endPos && endPos == recoveryStartPos)
           {
+            when (textPos == endPos && endPos == recoveryStartPos)
+            {
+              assert2(true);
+            }
             def sequence = rule.RuleParser.Reflection(rule.RuleParser.RuleId);
             AddRecord(textPos, textPos, ParseRecord.Simple(textPos, sequence, 0));
           }
+          else
+            AddRecord(textPos, endPos, record.Next());
 
         | Option            as rule =>
           def nextRecord = record.Next();

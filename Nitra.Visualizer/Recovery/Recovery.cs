@@ -27,6 +27,15 @@ namespace Nitra.DebugStrategies
   
 //#endregion
 
+  public static class Ex
+  {
+    public static IEnumerable<T> FilterMax<T>(this IEnumerable<T> seq, Func<T, int> predicate)
+    {
+      var maxIndex = seq.Max(predicate);
+      return seq.Where(z => predicate(z) == maxIndex);
+    }
+  }
+
   public class Recovery
   {
     public ReportData ReportResult;
@@ -45,6 +54,51 @@ namespace Nitra.DebugStrategies
       var rp = new RecoveryParser(parseResult);
       rp.StartParse(parseResult.RuleParser);
 
+      var newRecords = false;
+
+      do
+      {
+        Debug.WriteLine("---------------------------------------------");
+
+        //MarkAllRecordAsParsed(rp);
+
+        var maxPos = rp.Ast.Keys.Max(k => k.Pos);
+        var res1 =  rp.Ast.SelectMany(a => a.Value.Records.Where(r => r.Pos == maxPos)).ToList();
+        var res2 = res1.GroupBy(r => r.Record.Sequence).Select(x => x.FilterMax(y => y.Record.Index).FilterMax(ExtensibleStartPos).First()).ToList();
+
+        if (res2.Any(r => r.Record.IsComplete) && maxPos >= parseResult.Text.Length)
+        {
+          Debug.WriteLine("++++++++++++++++++++++++++++++");
+          var res3 = res2.Where(r => r.Record.IsComplete);
+          foreach (var r in res3)
+            Debug.WriteLine(r);
+
+          break;
+        }
+
+        newRecords = false;
+
+        foreach (var r in res2)
+          if (!r.Record.IsComplete)
+          {
+            var record = r.Record.SpeculativeNext();
+            Debug.WriteLine(record);
+            rp.AddRecord(r.Pos, r.Pos, r.Pos, record);
+            newRecords = true;
+          }
+          else
+          {
+          }
+
+        if (!newRecords)
+          break;
+
+        rp.Parse(maxPos);
+      }
+      while (true);
+
+      Debug.WriteLine(newRecords);
+
       while (parseResult.RecoveryStacks.Count > 0)
       {
         var failPos = parseResult.MaxFailPos;
@@ -54,6 +108,22 @@ namespace Nitra.DebugStrategies
       }
 
       return parseResult.Text.Length;
+    }
+
+    private static void MarkAllRecordAsParsed(RecoveryParser rp)
+    {
+      foreach (var x in rp.Ast.Values)
+        foreach (var r in x.Records)
+          r.Record.IsParsed = true;
+    }
+
+    private int ExtensibleStartPos(RecoveryParser.ParseRecordStart arg)
+    {
+      var ex = arg.Record as RecoveryParser.ParseRecord.Extension;
+      if (ex != null)
+        return ex.ExtensibleStartPos;
+
+      return -1;
     }
 
     private List<ParseAlternativeNode> CollectBestFrames(int failPos, ref int skipCount, ParseResult parseResult)
