@@ -316,7 +316,7 @@ namespace Nitra.Internal
         Stack.Push(record);
     }
 
-    public StartParse(ruleParser : RuleParser) : void
+    public StartParse(ruleParser : RuleParser, recoveryStartPos : int) : void
     {
       def textPos = 0;
       match (ruleParser)
@@ -335,10 +335,10 @@ namespace Nitra.Internal
         | _ => assert3(false)
       }
       Stack.Clear();
-      Parse();
+      Parse(recoveryStartPos, 0);
     }
 
-    public Parse(startPos : int = 0) : void
+    public Parse(recoveryStartPos : int, startPos : int = 0) : void
     {
       for (mutable textPos = startPos; textPos < Records.Length; ++textPos)
       {
@@ -353,7 +353,7 @@ namespace Nitra.Internal
           if (record.IsComplete)
             Completion(textPos, record)
           else
-            PredictionOrScanning(textPos, record, startPos)
+            PredictionOrScanning(textPos, record, recoveryStartPos)
         }
       }
     }

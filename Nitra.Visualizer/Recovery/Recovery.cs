@@ -49,10 +49,12 @@ namespace Nitra.DebugStrategies
 
     public virtual int Strategy(ParseResult parseResult)
     {
+      var maxFailPos = parseResult.MaxFailPos;
+
       Debug.Assert(parseResult.RecoveryStacks.Count > 0);
 
       var rp = new RecoveryParser(parseResult);
-      rp.StartParse(parseResult.RuleParser);
+      rp.StartParse(parseResult.RuleParser, maxFailPos);
 
       var newRecords = false;
 
@@ -62,38 +64,50 @@ namespace Nitra.DebugStrategies
 
         //MarkAllRecordAsParsed(rp);
 
-        var maxPos = rp.Ast.Keys.Max(k => k.Pos);
-        var res1 =  rp.Ast.SelectMany(a => a.Value.Records.Where(r => r.Pos == maxPos)).ToList();
-        var res2 = res1.GroupBy(r => r.Record.Sequence).Select(x => x.FilterMax(y => y.Record.Index).FilterMax(ExtensibleStartPos).First()).ToList();
+        var maxPos = Array.FindLastIndex(rp.Records, x => x != null);
+        //var maxPos2 = rp.Ast.Keys.Max(k => k.Pos);
 
-        if (res2.Any(r => r.Record.IsComplete) && maxPos >= parseResult.Text.Length)
+        var res1 = rp.Records[maxFailPos].OrderBy(x => x.Sequence.ToString()).ToList();
+        //var res1 = new List<RecoveryParser.ParseRecord>();
+        //for (int i = maxFailPos; i <= maxPos; i++)
+        //  res1.AddRange(rp.Records[i]);
+
+        var res2 = res1.Where(x => !x.IsComplete).GroupBy(r => r.Sequence).Select(x => x.FilterMax(y => y.Index).FilterMax(ExtensibleStartPos).First())
+          .OrderBy(x => x.Sequence.ToString()).ToList();
+
+        //Debug.Assert(res1_old.Count == res1.Count);
+        //Debug.Assert(res2_old.Count == res2.Count);
+
+        if (maxPos >= parseResult.Text.Length && res2.All(r => r.IsComplete))
         {
           Debug.WriteLine("++++++++++++++++++++++++++++++");
-          var res3 = res2.Where(r => r.Record.IsComplete);
-          foreach (var r in res3)
-            Debug.WriteLine(r);
+
+          foreach (var r in res1)
+            if (r.IsComplete)
+              Debug.WriteLine(r);
 
           break;
         }
 
         newRecords = false;
 
-        foreach (var r in res2)
-          if (!r.Record.IsComplete)
-          {
-            var record = r.Record.SpeculativeNext();
-            Debug.WriteLine(record);
-            rp.AddRecord(r.Pos, r.Pos, r.Pos, record);
-            newRecords = true;
-          }
-          else
-          {
-          }
+        //foreach (var r in res2)
+        //  if (!r.IsComplete)
+        //  {
+
+        //    var record = r.SpeculativeNext();
+        //    Debug.WriteLine(record);
+        //    rp.AddRecord(maxFailPos, maxFailPos, maxFailPos, record);
+        //    newRecords = true;
+        //  }
+        //  else
+        //  {
+        //  }
 
         if (!newRecords)
           break;
 
-        rp.Parse(maxPos);
+        rp.Parse(maxFailPos, maxFailPos);
       }
       while (true);
 
@@ -115,6 +129,22 @@ namespace Nitra.DebugStrategies
       foreach (var x in rp.Ast.Values)
         foreach (var r in x.Records)
           r.Record.IsParsed = true;
+    }
+
+    private void P<T>(IEnumerable<T> xs)
+    {
+      Debug.WriteLine("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+      foreach (var x in xs)
+        Debug.WriteLine(x);
+    }
+
+    private int ExtensibleStartPos(RecoveryParser.ParseRecord arg)
+    {
+      var ex = arg as RecoveryParser.ParseRecord.Extension;
+      if (ex != null)
+        return ex.ExtensibleStartPos;
+
+      return -1;
     }
 
     private int ExtensibleStartPos(RecoveryParser.ParseRecordStart arg)
