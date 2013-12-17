@@ -35,20 +35,24 @@ namespace Nitra.Compiler
         DefineChemicalAstCtorAndFields(fields);
         DefineAstPrettyPrint();
         DefineAstRuleMethods();
+        DefineAstLift(fields);
       }
       when (_spliceTb != null)
       {
         DefineSpliceRuleMethods();
+        DefineSpliceLift();
       }
       when (_missingTb != null)
       {
         DefineMissingPrettyPrint();
         DefineMissingRuleMethods();
+        DefineMissingLift();
       }
       when (_ambiguousTb != null)
       {
         DefineAmbiguousPrettyPrint();
         DefineAmbiguousRuleMethods();
+        DefineAmbiguousLift();
       }
     }
 

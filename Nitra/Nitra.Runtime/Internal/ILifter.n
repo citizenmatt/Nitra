@@ -1,0 +1,22 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Nitra.Internal
+{
+  public interface ILifter[T]
+  {
+    Ast(ruleDescriptor : RuleDescriptor, location : Location, members : array[T]) : T;
+    MissingAst(ruleDescriptor : RuleDescriptor, location : Location,) : T;
+    AmbiguousAst(ruleDescriptor : RuleDescriptor, location : Location, alternatives : array[T]) : T;
+    Tuple(members : array[T]) : T;
+    Span(source : SourceSnapshot, span : NSpan, keyword : string) : T;
+    List(items : array[T]) : T;
+    Option(item : option[T]) : T;
+  }
+}
