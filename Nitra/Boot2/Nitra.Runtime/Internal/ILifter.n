@@ -1,0 +1,33 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Nitra.Internal
+{
+  public variant LiftType
+  {
+    | Ast
+    | Text
+    | Keyword
+    | Tuple  { Members : array[LiftType] }
+    | Option { Item : LiftType }
+    | List   { Item : LiftType }
+  }
+
+  public interface ILifter[TResult]
+  {
+    Ast(ruleDescriptor : RuleDescriptor, location : Location, types : array[LiftType], members : array[TResult]) : TResult;
+    MissingAst(ruleDescriptor : RuleDescriptor, location : Location) : TResult;
+    AmbiguousAst(ruleDescriptor : RuleDescriptor, location : Location, alternatives : array[TResult]) : TResult;
+    Tuple(types : array[LiftType], members : array[TResult]) : TResult;
+    Keyword(source : SourceSnapshot, span : NSpan, keyword : string) : TResult;
+    Text(source : SourceSnapshot, span : NSpan) : TResult;
+    List(itemType : LiftType, items : List[TResult]) : TResult;
+    Option(itemType : LiftType, item : option[TResult]) : TResult;
+  }
+}
