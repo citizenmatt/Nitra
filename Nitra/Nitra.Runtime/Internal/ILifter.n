@@ -16,7 +16,7 @@ namespace Nitra.Internal
     AmbiguousAst(ruleDescriptor : RuleDescriptor, location : Location, alternatives : array[T]) : T;
     Tuple(members : array[T]) : T;
     Span(source : SourceSnapshot, span : NSpan, keyword : string) : T;
-    List(items : array[T]) : T;
+    List(items : List[T]) : T;
     Option(item : option[T]) : T;
   }
 }

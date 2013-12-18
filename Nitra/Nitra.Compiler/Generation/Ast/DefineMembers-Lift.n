@@ -22,10 +22,50 @@ namespace Nitra.Compiler
   {
     private DefineAstLift(fields : SCG.List[FieldInfo]) : void
     {
+      def lift(ruleType : RuleType, target : PExpr) : PExpr
+      {
+        match (ruleType)
+        {
+          | Void                 => assert(false)
+          | Ref                  => <[ $target.Lift(lifter) ]>
+          | Chars(Some(keyword)) => <[ lifter.Span(this.Location.Source, $target, $keyword) ]>
+          | Chars(None)          => <[ lifter.Span(this.Location.Source, $target, null) ]>
+          | Option(itemType) =>
+            <[
+              match ($target)
+              {
+                | Some(x) => lifter.Option(Some($(lift(itemType, <[ x ]>))))
+                | None    => lifter.Option(None())
+              }
+            ]>
+
+          | Tuple(members) =>
+            def vars = members.Map(t => (t, Util.tmpname("item")));
+            def decls = vars.Map((_, n) => <[ $(n : usesite) ]>);
+            def lifts = vars.Map((t, n) => lift(t, <[ $(n : usesite) ]>));
+            <[
+              def (..$decls) = $target;
+              lifter.Tuple(array[..$lifts])
+            ]>
+
+          | List(itemType) =>
+            <[
+              def items = System.Collections.Generic.List();
+              foreach (x in $target)
+                items.Add($(lift(itemType, <[ x ]>)));
+              lifter.List(items);
+            ]>
+        }
+      }
+
+      def members = SCG.List();
+      foreach (f in fields)
+        members.Add(lift(f.Rule.Type, <[ this.$(f.Name : usesite) ]>));
+
       _astTb.DefineConditional(<[ decl:
         public override Lift[T](lifter : Nitra.Internal.ILifter[T]) : T
         {
-          lifter.Ast($(this.RuleSymbol.GetRuleDescriptorRef()), this.Location, array[]);
+          unchecked { lifter.Ast($(this.RuleSymbol.GetRuleDescriptorRef()), this.Location, array[..$members]); }
         }
       ]>);
     }
@@ -35,7 +75,7 @@ namespace Nitra.Compiler
       _missingTb.DefineConditional(<[ decl:
         public override Lift[T](lifter : Nitra.Internal.ILifter[T]) : T
         {
-          lifter.MissingAst($(this.RuleSymbol.GetRuleDescriptorRef()), this.Location);
+          unchecked { lifter.MissingAst($(this.RuleSymbol.GetRuleDescriptorRef()), this.Location); }
         }
       ]>);
     }
@@ -45,10 +85,13 @@ namespace Nitra.Compiler
       _ambiguousTb.DefineConditional(<[ decl:
         public override Lift[T](lifter : Nitra.Internal.ILifter[T]) : T
         {
-          def alternatives = array(this.Ambiguities.Length);
-          for(mutable i = 0; i < alternatives.Length; ++i)
-            alternatives[i] = this.Ambiguities[i].Lift(lifter);
-          lifter.AmbiguousAst($(this.RuleSymbol.GetRuleDescriptorRef()), this.Location, alternatives);
+          unchecked
+          {
+            def alternatives = array(this.Ambiguities.Length);
+            for(mutable i = 0; i < alternatives.Length; ++i)
+              alternatives[i] = this.Ambiguities[i].Lift(lifter);
+            lifter.AmbiguousAst($(this.RuleSymbol.GetRuleDescriptorRef()), this.Location, alternatives);
+          }
         }
       ]>);
     }
