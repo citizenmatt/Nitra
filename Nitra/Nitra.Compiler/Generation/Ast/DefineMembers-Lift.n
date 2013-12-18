@@ -22,6 +22,45 @@ namespace Nitra.Compiler
   {
     private DefineAstLift(fields : SCG.List[FieldInfo]) : void
     {
+      def body = SCG.List();
+      def liftTypeNameCache = SCG.Dictionary();
+      def getLiftType(ruleType : RuleType) : PExpr
+      {
+        | Void             => assert(false);
+        | Ref              => <[ Nitra.Internal.LiftType.Ast() ]>
+        | Chars(Some)      => <[ Nitra.Internal.LiftType.Keyword() ]>
+        | Chars(None)      => <[ Nitra.Internal.LiftType.Text() ]>
+        | List(itemType)   =>
+          mutable name : string;
+          unless (liftTypeNameCache.TryGetValue(ruleType, out name))
+          {
+            name = Util.tmpname("liftType_List");
+            body.Add(<[ def $(name : usesite) = Nitra.Internal.LiftType.List($(getLiftType(itemType))); ]>);
+            liftTypeNameCache.Add(ruleType, name);
+          }
+          <[ $(name : usesite) ]>
+
+        | Option(itemType) =>
+          mutable name : string;
+          unless (liftTypeNameCache.TryGetValue(ruleType, out name))
+          {
+            name = Util.tmpname("liftType_Option");
+            body.Add(<[ def $(name : usesite) = Nitra.Internal.LiftType.Option($(getLiftType(itemType))); ]>);
+            liftTypeNameCache.Add(ruleType, name);
+          }
+          <[ $(name : usesite) ]>
+
+        | Tuple(members)   =>
+          mutable name : string;
+          unless (liftTypeNameCache.TryGetValue(ruleType, out name))
+          {
+            name = Util.tmpname("liftType_Tuple");
+            body.Add(<[ def $(name : usesite) = Nitra.Internal.LiftType.Tuple(array[..$(members.Map(getLiftType))]); ]>);
+            liftTypeNameCache.Add(ruleType, name);
+          }
+          <[ $(name : usesite) ]>
+      }
+
       def lift(ruleType : RuleType, target : PExpr) : PExpr
       {
         match (ruleType)
@@ -34,8 +73,8 @@ namespace Nitra.Compiler
             <[
               match ($target)
               {
-                | Some(x) => lifter.Option(Some($(lift(itemType, <[ x ]>))))
-                | None    => lifter.Option(None())
+                | Some(x) => lifter.Option($(getLiftType(itemType)), Some($(lift(itemType, <[ x ]>))))
+                | None    => lifter.Option($(getLiftType(itemType)), None())
               }
             ]>
 
@@ -45,7 +84,7 @@ namespace Nitra.Compiler
             def lifts = vars.Map((t, n) => lift(t, <[ $(n : usesite) ]>));
             <[
               def (..$decls) = $target;
-              lifter.Tuple(array[..$lifts])
+              lifter.Tuple(array[..$(members.Map(getLiftType))], array[..$lifts])
             ]>
 
           | List(itemType) =>
@@ -53,19 +92,25 @@ namespace Nitra.Compiler
               def items = System.Collections.Generic.List();
               foreach (x in $target)
                 items.Add($(lift(itemType, <[ x ]>)));
-              lifter.List(items);
+              lifter.List($(getLiftType(itemType)), items);
             ]>
         }
       }
 
       def members = SCG.List();
+      def liftTypes = SCG.List();
       foreach (f in fields)
+      {
         members.Add(lift(f.Rule.Type, <[ this.$(f.Name : usesite) ]>));
+        liftTypes.Add(getLiftType(f.Rule.Type));
+      }
+
+      body.Add(<[ lifter.Ast($(this.RuleSymbol.GetRuleDescriptorRef()), this.Location, array[..$liftTypes], array[..$members]) ]>);
 
       _astTb.DefineConditional(<[ decl:
         public override Lift[T](lifter : Nitra.Internal.ILifter[T]) : T
         {
-          unchecked { lifter.Ast($(this.RuleSymbol.GetRuleDescriptorRef()), this.Location, array[..$members]); }
+          unchecked { ..$body }
         }
       ]>);
     }
