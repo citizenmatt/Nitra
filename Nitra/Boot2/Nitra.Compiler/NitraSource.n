@@ -5,6 +5,7 @@ using Nitra.Typing;
 using Nitra.Runtime;
 using Nitra.Util;
 using Nitra.Serialization;
+using Nitra.Compiler.Serialization;
 
 using Nemerle;
 using Nemerle.Collections;
@@ -399,12 +400,13 @@ namespace Nitra
         foreach (reference in Manager.ReferencedAssemblies)
         {
           def assembly       = reference.Assembly;
+          def astLoader      = AstLoader(assembly);
           def metadataStream = assembly.GetManifestResourceStream("Nitra.Metadata");
           when (metadataStream != null)
           {
             def assemblyId = project.GetAssemblyId(assembly.GetName());
             def location   = Nitra.Location(makeFakeSourceSnapshot(assembly.Location), 0, 0);
-            def reader     = MetadataReader(metadataStream, loader.Registry, project, assemblyId, location);
+            def reader     = MetadataReader(metadataStream, loader.Registry, astLoader, project, assemblyId, location);
             loader.AddSource(reader, location);
           }
         }
@@ -419,10 +421,13 @@ namespace Nitra
     {
       unless (Manager.IsIntelliSenseMode)
       {
+        def astLifter = AstLifter(Manager);
+
         def metadataFileName = Manager.Options.OutputFileName + ".nitrametadata";
-        using(symbolWriter = MetadataWriter(FileStream(metadataFileName, FileMode.Create, FileAccess.Write), project))
+        using(symbolWriter = MetadataWriter(FileStream(metadataFileName, FileMode.Create, FileAccess.Write), astLifter, project))
           symbolWriter.WriteSymbols();
 
+        astLifter.Emit();
         Manager.Options.EmbeddedResources ::= metadataFileName + ",Nitra.Metadata";
       }
     }
