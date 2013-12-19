@@ -30,6 +30,7 @@ public abstract class SampleSymbol1 : SingleDefSymbol
 [Record, StructuralEquality]
 public class Test : Located
 {
+  public override Location : Location { get; }
   public Prop1 : int    { get; }
   public Prop2 : string { get; }
 }
@@ -83,6 +84,22 @@ public sealed class ParsedNonTreeSymbol : NonTreeSymbol
 
 module Program
 {
+  private class NullAstLifter : IAstLifter
+  {
+    public Lift(_ : Ast) : string
+    {
+      throw NotSupportedException();
+    }
+  }
+
+  private class NullAstLoader : IAstLoader
+  {
+    public Load(_ : string) : Ast
+    {
+      throw NotSupportedException();
+    }
+  }
+
   Main() : void
   {
     def p1 = StubProject();
@@ -97,7 +114,7 @@ module Program
     _ = p1.RootNamespace.Node.AddAndReport.[SampleSymbol2]([ "Foo", "Byz" ], sym3, Location.Default);
 
     def stream = MemoryStream();
-    def writer = MetadataWriter(stream);
+    def writer = MetadataWriter(stream, NullAstLifter());
     writer.WriteSymbols();
 
     def p2 = StubProject();
@@ -107,7 +124,7 @@ module Program
     def registry = ExternalSymbolConstructorRegistry.CreateFromAppDomainAssemblies();
 
     _ = stream.Seek(0L, SeekOrigin.Begin);
-    def reader = MetadataReader(stream, registry, AssemblyIds.NoAssembly, Location.Default);
+    def reader = MetadataReader(stream, registry, NullAstLoader(), AssemblyIds.NoAssembly, Location.Default);
     reader.CreateSymbols();
     reader.ReadSymbols();
 
