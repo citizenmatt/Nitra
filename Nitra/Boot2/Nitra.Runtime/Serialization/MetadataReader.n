@@ -17,20 +17,21 @@ namespace Nitra.Serialization
 {
   public sealed class MetadataReader : IMetadataReader, IDisposable
   {
-    public this(stream : Stream, symbolConstructorRegistry : ExternalSymbolConstructorRegistry, assemblyId : byte, symbolLocation : Location)
+    public this(stream : Stream, symbolConstructorRegistry : ExternalSymbolConstructorRegistry, astLoader : IAstLoader, assemblyId : byte, symbolLocation : Location)
     {
-      this(stream, symbolConstructorRegistry, Project.CurrentProject, assemblyId, symbolLocation)
+      this(stream, symbolConstructorRegistry, astLoader, Project.CurrentProject, assemblyId, symbolLocation)
     }
 
-    public this(stream : Stream, symbolConstructorRegistry : ExternalSymbolConstructorRegistry, project : Project, assemblyId : byte, symbolLocation : Location)
+    public this(stream : Stream, symbolConstructorRegistry : ExternalSymbolConstructorRegistry, astLoader : IAstLoader, project : Project, assemblyId : byte, symbolLocation : Location)
     {
-      this(stream, symbolConstructorRegistry, project, project.RootNamespace, assemblyId, symbolLocation)
+      this(stream, symbolConstructorRegistry, astLoader, project, project.RootNamespace, assemblyId, symbolLocation)
     }
 
-    public this(stream : Stream, symbolConstructorRegistry : ExternalSymbolConstructorRegistry, project : Project, root : NamespaceSymbol, assemblyId : byte, symbolLocation : Location)
+    public this(stream : Stream, symbolConstructorRegistry : ExternalSymbolConstructorRegistry, astLoader : IAstLoader, project : Project, root : NamespaceSymbol, assemblyId : byte, symbolLocation : Location)
     {
       _reader                    = BinaryReader(stream, Text.Encoding.UTF8);
       _symbolConstructorRegistry = symbolConstructorRegistry;
+      _astLoader                 = astLoader;
       _root                      = root;
       AssemblyId                 = assemblyId;
       SymbolLocation             = symbolLocation;
@@ -39,6 +40,7 @@ namespace Nitra.Serialization
 
     private _reader                    : BinaryReader;
     private _symbolConstructorRegistry : ExternalSymbolConstructorRegistry;
+    private _astLoader                 : IAstLoader;
     private _root                      : NamespaceSymbol;
 
     public Dispose() : void
@@ -198,6 +200,12 @@ namespace Nitra.Serialization
     private GetNode(nodeId : int) : HierarchyNode implements IMetadataReader.GetNode
     {
       _nodes[nodeId]
+    }
+
+    private LoadAst(reader : BinaryReader) : Ast implements IMetadataReader.LoadAst
+    {
+      def key = reader.ReadString();
+      _astLoader.Load(key);
     }
 
     [Memoize]

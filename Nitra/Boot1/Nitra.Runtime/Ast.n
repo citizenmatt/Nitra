@@ -33,6 +33,8 @@ namespace Nitra
       _ = callerBindingPower;
     }
 
+    public abstract Lift[T](lifter : ILifter[T]) : T;
+
     protected virtual PrettyPrintSource : IPrettyPrintSource
     {
       get { this.Location.Source }

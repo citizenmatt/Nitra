@@ -30,6 +30,7 @@ namespace Nitra.Compiler
       type.TryRequire(_environment.IExportableSymbolTypeVar)
        || type.TryRequire(_environment.SymbolTypeVar)
        || type.Equals(_environment.LocationTypeVar)
+       || type.TryRequire(_environment.AstTypeVar)
     }
 
     public MakeWriteCode(type : FixedType, _emitter : BinarySerializationEmitter) : PExpr
@@ -40,6 +41,8 @@ namespace Nitra.Compiler
         <[ $(_metadataWriterParam : usesite).WriteSymbolRef(obj :> Nitra.Serialization.IExportableSymbol, writer); ]>
       else if (type.Equals(_environment.LocationTypeVar))
         <[ $(_metadataWriterParam : usesite).WriteLocation(obj, writer); ]>
+      else if (type.TryRequire(_environment.AstTypeVar))
+        <[ $(_metadataWriterParam : usesite).LiftAst(obj, writer); ]>
       else
         assert(false)
     }
@@ -55,6 +58,11 @@ namespace Nitra.Compiler
         <[
           ignore(typeCode);
           $(_metadataReaderParam : usesite).ReadLocation(reader);
+        ]>
+      else if (type.TryRequire(_environment.AstTypeVar))
+        <[
+          ignore(typeCode);
+          $(_metadataReaderParam : usesite).CreateAst(reader) :> $(type : typed);
         ]>
       else
         assert(false)

@@ -177,6 +177,12 @@
     <Compile Include="Reflection\ReflectionWalker.n">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Serialization\IAstLifter.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Serialization\IAstLoader.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Serialization\IImportableSymbol.n">
       <SubType>Code</SubType>
     </Compile>

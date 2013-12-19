@@ -1,0 +1,104 @@
+﻿using Nitra;
+using Nitra.Internal;
+
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Compiler;
+using Nemerle.Compiler.Parsetree;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Nitra.Compiler.Generation
+{
+  class AstLifter : ILifter[PExpr]
+  {
+    public AmbiguousAst(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location, alternatives : array[PExpr]) : PExpr
+    {
+      _ = ruleDescriptor; _ = location; _ = alternatives;
+      throw System.NotImplementedException()
+    }
+
+    public MissingAst(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location) : PExpr
+    {
+      _ = ruleDescriptor; _ = location;
+      throw System.NotImplementedException()
+    }
+
+    public Ast(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location, types : array[LiftType], members : array[PExpr]) : PExpr
+    {
+      _ = location;
+
+      def filteredMembers = List();
+      foreach (m in members with index)
+        unless (IsOptimized(types[index]))
+          filteredMembers.Add(m);
+
+      def astTypeName = PExprUtils.FromQualifiedIdentifier(NString.Split(ruleDescriptor.Grammar.FullName + "." + ruleDescriptor.Name, '.'));
+      <[ $astTypeName.Create(context, ..$filteredMembers) ]>
+    }
+
+    public Text(source : Nitra.SourceSnapshot, span : Nitra.NSpan) : PExpr
+    {
+      <[ $(source.Text.Substring(span.StartPos, span.Length) : string) ]>
+    }
+
+    public Keyword(source : Nitra.SourceSnapshot, span : Nitra.NSpan, keyword : string) : PExpr
+    {
+      _ = source; _ = span; _ = keyword;
+      <[ () ]>
+    }
+
+    public List(itemType : LiftType, items : List[PExpr]) : PExpr
+    {
+      if (IsOptimized(itemType))
+        <[ $(items.Count : int) ]>
+      else
+        <[ [..$items] ]>
+    }
+
+    public Option(itemType : LiftType, item : option[PExpr]) : PExpr
+    {
+      if (IsOptimized(itemType))
+        match (item)
+        {
+          | Some(value) => <[ Some($value) ]>
+          | None        => <[ None() ]>
+        }
+      else
+        match (item)
+        {
+          | Some => <[ true ]>
+          | None => <[ false ]>
+        }
+    }
+
+    public Tuple(types : array[LiftType], members : array[PExpr]) : PExpr
+    {
+      def filteredMembers = List();
+      foreach (m in members with index)
+        unless (IsOptimized(types[index]))
+          filteredMembers.Add(m);
+
+      match (filteredMembers.Count)
+      {
+        | 0 => <[ () ]>
+        | 1 => filteredMembers[0]
+        | _ => <[ (..$filteredMembers) ]>
+      }
+    }
+
+    private static IsOptimized(type : LiftType) : bool
+    {
+      | Keyword => true
+      | Text
+      | Ast => false
+      | List(type)
+      | Option(type) => IsOptimized(type)
+      | Tuple(items) => items.All(IsOptimized)
+    }
+  }
+}
