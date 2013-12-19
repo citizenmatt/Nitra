@@ -13,7 +13,7 @@ using G = NitraSyntaxAst;
 
 namespace Nitra.Typing
 {
-  [Record, /*ExportableSymbol*/]
+  [Record, ExportableSymbol]
   public abstract class RuleAliasSymbol : SingleDefSymbol
   {
     public abstract Rule : G.RuleExpression { get; }
