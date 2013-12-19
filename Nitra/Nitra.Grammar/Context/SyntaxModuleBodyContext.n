@@ -12,7 +12,7 @@ using System.Linq;
 
 namespace Nitra.Typing
 {
-  public sealed class SyntaxModuleBodyContext : EnteredScopeContext, ITokenNamesMapContext
+  public sealed class SyntaxModuleBodyContext : EnteredScopeContext, ITokenNamesMapContext, IRuleAliasMapContext
   {
     public this(parent : Context)
     {
@@ -23,25 +23,12 @@ namespace Nitra.Typing
 
     public TokenNamesMap : Map[string, TokenLiteralSymbol]
     {
-      [Memoize] get
-      {
-        def appendSymbol(symbol : TokenLiteralSymbol, map : Map[string, TokenLiteralSymbol])
-        {
-          symbol.StringLiterals.FoldLeft(map, (lit, map) => map.Replace(lit, symbol))
-        }
-        def walk(baseContext)
-        {
-          match (baseContext.TryGetParent.[OpenNamespaceOrTypeContext]())
-          {
-            | null => Map()
-            | OpenNamespaceOrTypeContext(OpenSymbol = Some(SyntaxModuleSymbol as moduleSymbol)) as context =>
-              moduleSymbol.TokenLiterals.FoldLeft(walk(context), appendSymbol)
+      get { GetSymbolMaps()[0] }
+    }
 
-            | context => walk(context)
-          }
-        }
-        walk(this)
-      }
+    public RuleAliasMap : Map[string, RuleAliasSymbol]
+    {
+      get { GetSymbolMaps()[1] }
     }
 
     public GetSpaceRule(context : Context, ruleName : string, loc : Location) : option[RuleDefSymbol]
@@ -61,6 +48,34 @@ namespace Nitra.Typing
       def s = Location(SourceSnapshot(ruleName, 0, ""), NSpan(0, ruleName.Length));
       def symbol = Utils.BindImpl(context.BindMany.[RuleDefSymbol](s));
       symbol
+    }
+
+    [Memoize]
+    private GetSymbolMaps() : Map[string, TokenLiteralSymbol] * Map[string, RuleAliasSymbol]
+    {
+      def appendTokenLiteralSymbol(symbol : TokenLiteralSymbol, map : Map[string, TokenLiteralSymbol])
+      {
+        symbol.StringLiterals.FoldLeft(map, (lit, map) => map.Replace(lit, symbol))
+      }
+      def appendRuleAliasSymbol(symbol : RuleAliasSymbol, map : Map[string, RuleAliasSymbol])
+      {
+        map.Replace(symbol.Name, symbol)
+      }
+      def walk(baseContext)
+      {
+        match (baseContext.TryGetParent.[OpenNamespaceOrTypeContext]())
+        {
+          | null => (Map(), Map())
+          | OpenNamespaceOrTypeContext(OpenSymbol = Some(SyntaxModuleSymbol as moduleSymbol)) as context =>
+            def (tokenLiteralMap, ruleAliasMap) = walk(context);
+            def newTokenLiteralMap = moduleSymbol.TokenLiterals.FoldLeft(tokenLiteralMap, appendTokenLiteralSymbol);
+            def newRuleAliasMap    = moduleSymbol.RuleAliases.FoldLeft(ruleAliasMap, appendRuleAliasSymbol);
+            (newTokenLiteralMap, newRuleAliasMap)
+
+          | context => walk(context)
+        }
+      }
+      walk(this)
     }
 
     private mutable _whitespaceHintShown : bool = false;

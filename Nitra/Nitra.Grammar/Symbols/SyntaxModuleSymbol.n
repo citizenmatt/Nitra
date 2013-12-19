@@ -20,6 +20,8 @@ namespace Nitra.Typing
 
     public abstract TokenLiterals : list[TokenLiteralSymbol] { get; }
 
+    public abstract RuleAliases : list[RuleAliasSymbol] { get; }
+
     public abstract ExternalImports : list[SyntaxModuleSymbol] { get; }
 
     public DeclarationSite : IRuleDeclarationSite { get null }
@@ -54,6 +56,21 @@ namespace Nitra.Typing
             acc
           else
             loop(context.TryGetParent(), context.TokenLiteral :: acc)
+        }
+        loop(_ast.FinalContext.TryGetContext(), [])
+      }
+    }
+
+    public override RuleAliases : list[RuleAliasSymbol]
+    {
+      [Memoize] get
+      {
+        def loop(context : RuleAliasContext, acc)
+        {
+          if (null == context)
+            acc
+          else
+            loop(context.TryGetParent(), context.RuleAlias :: acc)
         }
         loop(_ast.FinalContext.TryGetContext(), [])
       }

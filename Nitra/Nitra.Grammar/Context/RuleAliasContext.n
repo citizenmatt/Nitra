@@ -11,22 +11,31 @@ using System.Linq;
 
 namespace Nitra.Typing
 {
-  public class RuleAliasContext : SimpleNameContext[RuleAliasSymbol]
+  public class RuleAliasContext : SimpleNameContext[RuleAliasSymbol], IRuleAliasMapContext
   {
-    RuleAlias    : RuleAliasSymbol { get; }
-    public override SymbolMap : Map[string, RuleAliasSymbol] { get; }
+    public RuleAlias    : RuleAliasSymbol { get; }
+    public override SymbolMap : Map[string, RuleAliasSymbol] implements IRuleAliasMapContext.RuleAliasMap
+    {
+      [Memoize] get
+      {
+        GetParent.[IRuleAliasMapContext]().RuleAliasMap.Replace(RuleAlias.Name, RuleAlias)
+      }
+    }
 
     public this(parent : Context, ruleAlias : RuleAliasSymbol)
     {
       base(parent);
       RuleAlias  = ruleAlias;
-      def parent = TryGetParent.[RuleAliasContext]();
-      SymbolMap  = (parent?.SymbolMap ?? Map()).Replace(ruleAlias.Name, RuleAlias);
     }
 
     public override ToString() : string
     {
       "alias " + RuleAlias.Name + " = " + RuleAlias.Rule
     }
+  }
+
+  public interface IRuleAliasMapContext : IContext
+  {
+    RuleAliasMap : Map[string, RuleAliasSymbol] { get; }
   }
 }
