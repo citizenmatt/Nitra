@@ -62,7 +62,7 @@ namespace Nitra.Compiler
       else if (type.TryRequire(_environment.AstTypeVar))
         <[
           ignore(typeCode);
-          $(_metadataReaderParam : usesite).CreateAst(reader) :> $(type : typed);
+          $(_metadataReaderParam : usesite).LoadAst(reader) :> $(type : typed);
         ]>
       else
         assert(false)
