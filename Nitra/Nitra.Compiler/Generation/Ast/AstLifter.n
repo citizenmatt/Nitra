@@ -16,30 +16,37 @@ namespace Nitra.Compiler.Generation
 {
   class AstLifter : ILifter[PExpr]
   {
-    public AmbiguousAst(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location, alternatives : array[Nemerle.Compiler.Parsetree.PExpr]) : Nemerle.Compiler.Parsetree.PExpr
+    public AmbiguousAst(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location, alternatives : array[PExpr]) : PExpr
     {
       _ = ruleDescriptor; _ = location; _ = alternatives;
       throw System.NotImplementedException()
     }
 
-    public MissingAst(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location) : Nemerle.Compiler.Parsetree.PExpr
+    public MissingAst(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location) : PExpr
     {
       _ = ruleDescriptor; _ = location;
       throw System.NotImplementedException()
     }
 
-    public Ast(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location, types : array[Nitra.Internal.LiftType], members : array[Nemerle.Compiler.Parsetree.PExpr]) : Nemerle.Compiler.Parsetree.PExpr
+    public Ast(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location, types : array[LiftType], members : array[PExpr]) : PExpr
     {
-      _ = ruleDescriptor; _ = location; _ = types; _ = members;
-      throw System.NotImplementedException()
+      _ = location;
+
+      def filteredMembers = List();
+      foreach (m in members with index)
+        unless (IsOptimized(types[index]))
+          filteredMembers.Add(m);
+
+      def astTypeName = PExprUtils.FromQualifiedIdentifier(NString.Split(ruleDescriptor.Grammar.FullName + "." + ruleDescriptor.Name, '.'));
+      <[ $astTypeName.Create(context, ..$filteredMembers) ]>
     }
 
-    public Text(source : Nitra.SourceSnapshot, span : Nitra.NSpan) : Nemerle.Compiler.Parsetree.PExpr
+    public Text(source : Nitra.SourceSnapshot, span : Nitra.NSpan) : PExpr
     {
       <[ $(source.Text.Substring(span.StartPos, span.Length) : string) ]>
     }
 
-    public Keyword(source : Nitra.SourceSnapshot, span : Nitra.NSpan, keyword : string) : Nemerle.Compiler.Parsetree.PExpr
+    public Keyword(source : Nitra.SourceSnapshot, span : Nitra.NSpan, keyword : string) : PExpr
     {
       _ = source; _ = span; _ = keyword;
       <[ () ]>

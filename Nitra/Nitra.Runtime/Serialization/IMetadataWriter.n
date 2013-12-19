@@ -11,5 +11,6 @@ namespace Nitra.Serialization
 
     WriteSymbolRef(symbol : IExportableSymbol, buffer : BinaryWriter) : void;
     WriteLocation(location : Location, buffer : BinaryWriter) : void;
+    LiftAst(ast : Ast, buffer : BinaryWriter) : void;
   }
 }

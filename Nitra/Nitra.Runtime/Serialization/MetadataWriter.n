@@ -14,24 +14,26 @@ namespace Nitra.Serialization
 {
   public sealed class MetadataWriter : IMetadataWriter, IDisposable
   {
-    public this(stream : Stream)
+    public this(stream : Stream, astLifter : IAstLifter)
     {
-      this(stream, Project.CurrentProject)
+      this(stream, astLifter, Project.CurrentProject)
     }
 
-    public this(stream : Stream, project : Project)
+    public this(stream : Stream, astLifter : IAstLifter, project : Project)
     {
-      this(stream, project, project.RootNamespace)
+      this(stream, astLifter, project, project.RootNamespace)
     }
 
-    public this(stream : Stream, project : Project, root : NamespaceSymbol)
+    public this(stream : Stream, astLifter : IAstLifter, project : Project, root : NamespaceSymbol)
     {
+      _astLifter        = astLifter;
       _writer           = BinaryWriter(stream, Text.Encoding.UTF8);
       _symbolBodyWriter = BinaryWriter(MemoryStream(), Text.Encoding.UTF8);
       _root             = root;
       Project           = project;
     }
 
+    private _astLifter          : IAstLifter;
     private _writer             : BinaryWriter;
     private _symbolBodyWriter   : BinaryWriter;
     private _root               : NamespaceSymbol;
@@ -199,6 +201,12 @@ namespace Nitra.Serialization
     private WriteLocation(location : Location, writer : BinaryWriter) : void implements IMetadataWriter.WriteLocation
     {
       ignore(location, writer); //TODO: implement location writing
+    }
+
+    private LiftAst(ast : Ast, writer : BinaryWriter) : void implements IMetadataWriter.LiftAst
+    {
+      def key = _astLifter.Lift(ast);
+      writer.Write(key);
     }
 
     private CollectExportableSymbols() : List[IExportableSymbol]
