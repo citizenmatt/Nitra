@@ -1,10 +1,12 @@
 ﻿using Nitra;
 using Nitra.Internal;
+using Nitra.Runtime;
+using Nitra.Serialization;
 
 using Nemerle;
-using Nemerle.Collections;
 using Nemerle.Compiler;
 using Nemerle.Compiler.Parsetree;
+using Nemerle.Collections;
 using Nemerle.Text;
 using Nemerle.Utility;
 
@@ -12,10 +14,48 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Nitra.Compiler.Generation
+namespace Nitra.Compiler.Serialization
 {
-  class AstLifter : ILifter[PExpr]
+  internal class AstLifter : IAstLifter, ILifter[PExpr]
   {
+    public static ContainerTypeName : string = "_N_LiftedAst";
+
+    public this(manager : ManagerClass)
+    {
+      _manager = manager;
+    }
+
+    private         _manager     : ManagerClass;
+    private mutable _containerTb : TypeBuilder;
+
+    public Lift(ast : Ast) : string
+    {
+      def body = ast.Lift(this);
+
+      when (_containerTb == null)
+      {
+        def env = _manager.CoreEnv.EnterIntoNamespace(["Nitra", "Internal"]);
+        _containerTb = env.Define(<[ decl: internal module $(ContainerTypeName : usesite) {} ]>);
+      }
+
+      def key = Util.tmpname("ast");
+
+      _containerTb.DefineConditional(<[ decl:
+        public $(key : usesite)(context : Nitra.Runtime.ChemicalAstContext) : Nitra.Ast
+        {
+          $body;
+        }
+      ]>);
+
+      key
+    }
+
+    public Emit() : void
+    {
+      when (_containerTb : object != null)
+        _containerTb.Compile();
+    }
+
     public AmbiguousAst(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location, alternatives : array[PExpr]) : PExpr
     {
       _ = ruleDescriptor; _ = location; _ = alternatives;

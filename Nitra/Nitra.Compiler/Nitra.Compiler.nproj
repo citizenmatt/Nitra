@@ -122,9 +122,6 @@
     <Compile Include="Generation\AstPointer.n">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Generation\Ast\AstLifter.n">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Generation\Ast\DefineMembers-GetFields.n">
       <SubType>Code</SubType>
     </Compile>
@@ -399,6 +396,12 @@
     <Compile Include="$(CommonFilesPath)\AssemblyConstants.Common.n">
       <Link>Properties\AssemblyConstants.Common.n</Link>
     </Compile>
+    <Compile Include="Serialization\AstLifter.n">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Serialization\AstLoader.n">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Util.n">
       <SubType>Code</SubType>
     </Compile>
@@ -422,6 +425,7 @@
     <Folder Include="Integration" />
     <Folder Include="Macros" />
     <Folder Include="Generation" />
+    <Folder Include="Serialization" />
     <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(Nemerle)\Nemerle.MSBuild.targets" />

@@ -1,0 +1,43 @@
+﻿using Nitra;
+using Nitra.Serialization;
+using Nitra.Runtime;
+
+using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+
+using System;
+using System.Reflection;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Nitra.Compiler.Serialization
+{
+  internal class AstLoader : IAstLoader
+  {
+    public this(assembly : Assembly)
+    {
+      _assembly  = assembly;
+    }
+
+    private         _assembly  : Assembly;
+    private mutable _container : Type;
+
+    public Load(key : string) : Ast
+    {
+      when (_container : object == null)
+        _container = _assembly.GetType("Nitra.Internal." + AstLifter.ContainerTypeName, throwOnError = true);
+
+      def load = GetLoadMethod(key);
+      def context = ChemicalAstContext();
+      load(context)
+    }
+
+    [Memoize]
+    private GetLoadMethod(key : string) : Func[ChemicalAstContext, Ast]
+    {
+      Delegate.CreateDelegate(typeof(Func[ChemicalAstContext, Ast]), _container, key, ignoreCase = false, throwOnBindFailure = true) :> Func[ChemicalAstContext, Ast]
+    }
+  }
+}
