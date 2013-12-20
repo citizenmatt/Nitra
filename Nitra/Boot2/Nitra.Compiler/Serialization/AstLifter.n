@@ -56,19 +56,19 @@ namespace Nitra.Compiler.Serialization
         _containerTb.Compile();
     }
 
-    public AmbiguousAst(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location, alternatives : array[PExpr]) : PExpr
+    public AmbiguousAst(ruleDescriptor : RuleDescriptor, location : Nitra.Location, alternatives : array[PExpr]) : PExpr
     {
       _ = ruleDescriptor; _ = location; _ = alternatives;
       throw System.NotImplementedException()
     }
 
-    public MissingAst(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location) : PExpr
+    public MissingAst(ruleDescriptor : RuleDescriptor, location : Nitra.Location) : PExpr
     {
       _ = ruleDescriptor; _ = location;
       throw System.NotImplementedException()
     }
 
-    public Ast(ruleDescriptor : Nitra.RuleDescriptor, location : Nitra.Location, types : array[LiftType], members : array[PExpr]) : PExpr
+    public Ast(ruleDescriptor : RuleDescriptor, location : Nitra.Location, types : array[LiftType], members : array[PExpr]) : PExpr
     {
       _ = location;
 
@@ -81,12 +81,12 @@ namespace Nitra.Compiler.Serialization
       <[ $astTypeName.Create(context, ..$filteredMembers) ]>
     }
 
-    public Text(source : Nitra.SourceSnapshot, span : Nitra.NSpan) : PExpr
+    public Text(source : SourceSnapshot, span : NSpan) : PExpr
     {
       <[ $(source.Text.Substring(span.StartPos, span.Length) : string) ]>
     }
 
-    public Keyword(source : Nitra.SourceSnapshot, span : Nitra.NSpan, keyword : string) : PExpr
+    public Keyword(source : SourceSnapshot, span : NSpan, keyword : string) : PExpr
     {
       _ = source; _ = span; _ = keyword;
       <[ () ]>
@@ -105,14 +105,14 @@ namespace Nitra.Compiler.Serialization
       if (IsOptimized(itemType))
         match (item)
         {
-          | Some(value) => <[ Some($value) ]>
-          | None        => <[ None() ]>
+          | Some => <[ true ]>
+          | None => <[ false ]>
         }
       else
         match (item)
         {
-          | Some => <[ true ]>
-          | None => <[ false ]>
+          | Some(value) => <[ Some($value) ]>
+          | None        => <[ None() ]>
         }
     }
 
